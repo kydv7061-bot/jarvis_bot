@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>J.A.R.V.I.S — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #020b14; --bg2: #010810; --card: #030f1c;
+  --blue: #00cfff; --blue2: #0088aa; --blue3: #003355;
+  --gold: #ffd700; --green: #00ff88; --red: #ff2d2d;
+  --orange: #ff9900; --purple: #9955ff;
+  --text: #c8f0ff; --dim: #4a7a90; --dim2: #1a3d55;
+  --border: rgba(0,207,255,0.18); --border-hot: rgba(0,207,255,0.5);
+  --glow: 0 0 20px rgba(0,207,255,0.25);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg2);color:var(--text);font-family:'Share Tech Mono',monospace;min-height:100vh;overflow-x:hidden;cursor:crosshair;}
+body::before{content:'';position:fixed;inset:0;background:linear-gradient(rgba(0,207,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,207,255,0.025) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+
+/* ── SCANLINES ── */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:999;}
+
+/* ── TOP BAR ── */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(2,11,20,0.97);border-bottom:1px solid var(--border);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:54px;}
+.logo{font-family:'Orbitron',sans-serif;font-weight:900;font-size:18px;color:var(--blue);text-shadow:var(--glow);letter-spacing:6px;display:flex;align-items:center;gap:10px;}
+.arc{width:26px;height:26px;border-radius:50%;border:2px solid var(--blue);box-shadow:0 0 12px var(--blue),inset 0 0 8px rgba(0,207,255,0.3);animation:arcPulse 2s ease-in-out infinite;position:relative;}
+.arc::before{content:'';position:absolute;inset:5px;border-radius:50%;background:radial-gradient(circle,rgba(0,207,255,0.9),rgba(0,100,200,0.4));animation:arcCore 2s ease-in-out infinite;}
+@keyframes arcPulse{0%,100%{box-shadow:0 0 10px var(--blue)}50%{box-shadow:0 0 25px var(--blue),0 0 50px rgba(0,207,255,0.3)}}
+@keyframes arcCore{0%,100%{opacity:.7}50%{opacity:1}}
+.topbar-right{display:flex;align-items:center;gap:16px;font-size:10px;color:var(--dim);letter-spacing:2px;}
+#clock{font-family:'Orbitron',sans-serif;font-size:14px;color:var(--gold);text-shadow:0 0 10px rgba(255,215,0,0.4);}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);display:inline-block;margin-right:5px;animation:blink 2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── LAYOUT ── */
+.container{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:16px;display:grid;grid-template-columns:300px 1fr 280px;gap:14px;min-height:calc(100vh - 54px);}
+
+/* ── PANEL ── */
+.panel{background:rgba(3,15,28,0.8);border:1px solid var(--border);border-radius:4px;padding:14px;position:relative;overflow:hidden;transition:border-color .3s;}
+.panel:hover{border-color:var(--border-hot);box-shadow:var(--glow);}
+.panel::before{content:'';position:absolute;top:0;left:0;width:36px;height:2px;background:var(--blue);box-shadow:var(--glow);}
+.panel::after{content:'';position:absolute;top:0;left:0;width:2px;height:36px;background:var(--blue);box-shadow:var(--glow);}
+.panel-title{font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:4px;color:var(--blue);margin-bottom:12px;text-transform:uppercase;opacity:.8;}
+
+/* ── LEFT ── */
+.left-col{display:flex;flex-direction:column;gap:12px;}
+
+/* Status panel */
+.stat-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(0,207,255,0.06);font-size:10px;color:var(--dim);}
+.stat-row:last-child{border-bottom:none;}
+.stat-val{color:var(--blue);font-family:'Orbitron',sans-serif;font-size:11px;}
+.bar-track{width:100%;height:3px;background:rgba(0,207,255,0.08);border-radius:2px;margin-top:3px;}
+.bar-fill{height:3px;background:linear-gradient(90deg,var(--blue2),var(--blue));border-radius:2px;box-shadow:0 0 6px var(--blue);transition:width .8s ease;}
+
+/* Mode buttons */
+.mode-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;}
+.mode-btn{padding:6px 4px;background:rgba(0,207,255,0.04);border:1px solid var(--border);border-radius:3px;color:var(--dim);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;text-align:center;transition:all .2s;}
+.mode-btn:hover,.mode-btn.active{background:rgba(0,207,255,0.12);border-color:var(--blue);color:var(--blue);box-shadow:var(--glow);}
+
+/* Quick tools */
+.tool-btn{display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(0,207,255,0.03);border:1px solid var(--border);border-radius:3px;color:var(--dim);font-family:'Share Tech Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;width:100%;text-align:left;margin-bottom:4px;}
+.tool-btn:hover{background:rgba(0,207,255,0.09);border-color:var(--blue);color:var(--blue);transform:translateX(3px);}
+
+/* ── CENTER ── */
+.center-col{display:flex;flex-direction:column;gap:12px;}
+
+/* Chat */
+.chat-wrap{display:flex;flex-direction:column;flex:1;}
+.messages{height:380px;overflow-y:auto;padding:14px;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:4px 4px 0 0;scrollbar-width:thin;scrollbar-color:var(--blue2) transparent;}
+.messages::-webkit-scrollbar{width:3px;}
+.messages::-webkit-scrollbar-thumb{background:var(--blue2);border-radius:2px;}
+.msg{margin-bottom:16px;animation:msgIn .3s ease;}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg-who{font-size:9px;letter-spacing:2px;margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.msg-who.jarvis{color:var(--blue);}
+.msg-who.user{color:var(--gold);}
+.msg-body{padding:10px 14px;font-size:12px;line-height:1.65;}
+.msg-body.jarvis{background:rgba(0,207,255,0.05);border-left:2px solid var(--blue);border-radius:2px 6px 6px 6px;}
+.msg-body.user{background:rgba(255,215,0,0.05);border-left:2px solid var(--gold);border-radius:2px 6px 6px 6px;color:rgba(255,215,0,0.85);}
+.typing-dots{display:flex;gap:4px;padding:12px 14px;}
+.typing-dots span{width:6px;height:6px;border-radius:50%;background:var(--blue);animation:dot 1.2s infinite;}
+.typing-dots span:nth-child(2){animation-delay:.2s;}
+.typing-dots span:nth-child(3){animation-delay:.4s;}
+@keyframes dot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+.input-row{display:flex;background:rgba(0,0,0,0.5);border:1px solid var(--border);border-top:none;border-radius:0 0 4px 4px;overflow:hidden;}
+.inp-prefix{padding:0 10px;display:flex;align-items:center;color:var(--blue);font-size:15px;background:rgba(0,207,255,0.04);border-right:1px solid var(--border);}
+#chatInput{flex:1;background:transparent;border:none;outline:none;padding:13px;color:var(--gold);font-family:'Share Tech Mono',monospace;font-size:12px;caret-color:var(--blue);}
+#chatInput::placeholder{color:var(--dim);}
+#sendBtn{padding:0 16px;background:rgba(0,207,255,0.08);border:none;border-left:1px solid var(--border);color:var(--blue);font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;cursor:pointer;transition:all .2s;}
+#sendBtn:hover{background:rgba(0,207,255,0.18);}
+#clearBtn{padding:0 12px;background:transparent;border:none;border-left:1px solid var(--border);color:var(--dim);font-size:10px;cursor:pointer;transition:color .2s;}
+#clearBtn:hover{color:var(--red);}
+
+/* ── YOUTUBE ── */
+.yt-input-row{display:flex;gap:8px;}
+.yt-input{flex:1;background:rgba(0,207,255,0.04);border:1px solid var(--border);border-radius:3px;padding:9px 12px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;outline:none;}
+.yt-input:focus{border-color:var(--blue);}
+.yt-btn{padding:9px 16px;background:rgba(255,45,45,0.1);border:1px solid rgba(255,45,45,0.3);border-radius:3px;color:var(--red);font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;cursor:pointer;transition:all .2s;}
+.yt-btn:hover{background:rgba(255,45,45,0.2);box-shadow:0 0 15px rgba(255,45,45,0.3);}
+.yt-results{margin-top:10px;}
+.yt-card{display:flex;align-items:center;gap:10px;padding:8px;background:rgba(255,45,45,0.04);border:1px solid rgba(255,45,45,0.15);border-radius:3px;margin-bottom:6px;cursor:pointer;transition:all .2s;text-decoration:none;}
+.yt-card:hover{background:rgba(255,45,45,0.1);border-color:rgba(255,45,45,0.4);}
+.yt-play-icon{color:var(--red);font-size:18px;min-width:20px;}
+.yt-title{font-size:11px;color:var(--text);flex:1;}
+.yt-meta{font-size:9px;color:var(--dim);}
+
+/* ── WEATHER ── */
+.weather-input-row{display:flex;gap:8px;margin-bottom:10px;}
+.w-input{flex:1;background:rgba(0,207,255,0.04);border:1px solid var(--border);border-radius:3px;padding:9px 12px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;outline:none;}
+.w-input:focus{border-color:var(--blue);}
+.w-btn{padding:9px 14px;background:rgba(0,207,255,0.08);border:1px solid var(--border);border-radius:3px;color:var(--blue);font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;cursor:pointer;transition:all .2s;}
+.w-btn:hover{background:rgba(0,207,255,0.15);}
+.weather-card{background:rgba(0,207,255,0.05);border:1px solid var(--border);border-radius:4px;padding:12px;font-size:11px;line-height:1.8;}
+.w-city{font-family:'Orbitron',sans-serif;font-size:14px;color:var(--blue);margin-bottom:6px;}
+.w-temp{font-size:28px;font-family:'Orbitron',sans-serif;color:var(--gold);margin-bottom:4px;}
+.w-row{display:flex;gap:16px;color:var(--dim);}
+.w-val{color:var(--text);}
+
+/* ── CRICKET ── */
+.cricket-box{background:rgba(0,255,136,0.03);border:1px solid rgba(0,255,136,0.15);border-radius:3px;padding:10px;font-size:10px;line-height:1.7;white-space:pre-wrap;max-height:160px;overflow-y:auto;color:var(--text);}
+.cricket-btn{margin-top:8px;}
+
+/* ── RIGHT ── */
+.right-col{display:flex;flex-direction:column;gap:12px;}
+
+/* Notes */
+.note-input{width:100%;background:rgba(0,207,255,0.04);border:1px solid var(--border);border-radius:3px;padding:8px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;resize:none;outline:none;margin-bottom:6px;}
+.note-input:focus{border-color:var(--blue);}
+.save-btn{width:100%;padding:7px;background:rgba(0,207,255,0.08);border:1px solid var(--border);border-radius:3px;color:var(--blue);font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;cursor:pointer;transition:all .2s;margin-bottom:8px;}
+.save-btn:hover{background:rgba(0,207,255,0.15);}
+.note-list{max-height:120px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--blue2) transparent;}
+.note-item{padding:5px 6px;background:rgba(0,207,255,0.03);border-left:2px solid var(--blue2);margin-bottom:4px;font-size:10px;color:var(--text);border-radius:0 3px 3px 0;}
+.note-time{font-size:8px;color:var(--dim);}
+
+/* Reminders */
+.reminder-row{display:flex;gap:6px;margin-bottom:6px;}
+.r-input{flex:2;background:rgba(0,207,255,0.04);border:1px solid var(--border);border-radius:3px;padding:7px 8px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:10px;outline:none;}
+.r-input:focus{border-color:var(--blue);}
+.r-mins{width:60px;background:rgba(0,207,255,0.04);border:1px solid var(--border);border-radius:3px;padding:7px 6px;color:var(--text);font-family:'Share Tech Mono',monospace;font-size:10px;outline:none;}
+.r-add-btn{padding:7px 10px;background:rgba(255,153,0,0.1);border:1px solid rgba(255,153,0,0.3);border-radius:3px;color:var(--orange);font-size:10px;cursor:pointer;transition:all .2s;}
+.r-add-btn:hover{background:rgba(255,153,0,0.2);}
+.reminder-item{display:flex;align-items:center;gap:6px;padding:5px 6px;background:rgba(255,153,0,0.04);border-left:2px solid var(--orange);margin-bottom:4px;font-size:10px;border-radius:0 3px 3px 0;}
+.r-time{color:var(--orange);font-family:'Orbitron',sans-serif;font-size:9px;min-width:36px;}
+
+/* Accent buttons */
+.accent-btn{padding:6px 12px;border-radius:3px;font-family:'Share Tech Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s;border:1px solid;}
+.accent-btn.blue{background:rgba(0,207,255,0.08);border-color:var(--border);color:var(--blue);}
+.accent-btn.blue:hover{background:rgba(0,207,255,0.16);border-color:var(--blue);}
+.accent-btn.green{background:rgba(0,255,136,0.08);border-color:rgba(0,255,136,0.3);color:var(--green);}
+.accent-btn.green:hover{background:rgba(0,255,136,0.16);}
+
+/* Toasts */
+#toast{position:fixed;bottom:20px;right:20px;padding:10px 18px;background:rgba(0,207,255,0.15);border:1px solid var(--blue);border-radius:4px;color:var(--blue);font-size:11px;letter-spacing:1px;z-index:1000;opacity:0;transition:opacity .3s;pointer-events:none;}
+#toast.show{opacity:1;}
+
+@media(max-width:1100px){.container{grid-template-columns:1fr;}.left-col,.right-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;}}
+@media(max-width:700px){.container{grid-template-columns:1fr;padding:8px;}.left-col,.right-col{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div id="toast">✅ Done!</div>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="arc"></div>
+    JARVIS
+  </div>
+  <div class="topbar-right">
+    <span id="statusLabel"><span class="status-dot"></span>ONLINE</span>
+    <span id="modeLabel" style="color:var(--blue);letter-spacing:2px;">CASUAL</span>
+    <span id="aiLabel" style="color:var(--dim);">GROQ</span>
+    <span id="clock">--:--:--</span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="container">
+
+  <!-- LEFT -->
+  <div class="left-col">
+
+    <div class="panel">
+      <div class="panel-title">◈ System Status</div>
+      <div class="stat-row"><span>AI ENGINE</span><span class="stat-val" id="aiStat">GROQ</span></div>
+      <div class="stat-row"><span>TASKS DONE</span><span class="stat-val" id="taskStat">0</span></div>
+      <div class="stat-row"><span>NOTES</span><span class="stat-val" id="notesStat">0</span></div>
+      <div class="stat-row"><span>REMINDERS</span><span class="stat-val" id="remStat">0</span></div>
+      <div class="stat-row"><span>SESSION</span><span class="stat-val" id="sessionStat">0m</span></div>
+      <div style="margin-top:8px;">
+        <div style="font-size:9px;color:var(--dim);margin-bottom:3px;">CONTEXT LOAD</div>
+        <div class="bar-track"><div class="bar-fill" id="contextBar" style="width:5%"></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">◈ Personality Mode</div>
+      <div class="mode-grid" id="modeGrid">
+        <button class="mode-btn active" onclick="setMode('casual')">😎 CASUAL</button>
+        <button class="mode-btn" onclick="setMode('pro')">💼 PRO</button>
+        <button class="mode-btn" onclick="setMode('coach')">🏆 COACH</button>
+        <button class="mode-btn" onclick="setMode('savage')">🔥 SAVAGE</button>
+        <button class="mode-btn" onclick="setMode('calm')">🌿 CALM</button>
+        <button class="mode-btn" onclick="setMode('genius')">🧬 GENIUS</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">◈ Quick Commands</div>
+      <button class="tool-btn" onclick="quickChat('Daily briefing')">🌅 Daily Briefing</button>
+      <button class="tool-btn" onclick="quickChat('motivate me')">💪 Motivate Me</button>
+      <button class="tool-btn" onclick="quickChat('tell me a joke')">😂 Joke</button>
+      <button class="tool-btn" onclick="quickChat('daily quote')">📖 Quote</button>
+      <button class="tool-btn" onclick="quickChat('roast me')">🔥 Roast Me</button>
+      <button class="tool-btn" onclick="quickChat('generate password')">🔐 Password</button>
+      <button class="tool-btn" onclick="clearChat()">🔄 Clear Memory</button>
+    </div>
+
+  </div>
+
+  <!-- CENTER -->
+  <div class="center-col">
+
+    <!-- Chat -->
+    <div class="panel" style="flex:1;padding:0;overflow:hidden;">
+      <div style="padding:12px 14px 8px;background:rgba(0,207,255,0.03);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:var(--blue);letter-spacing:3px;">J.A.R.V.I.S</div>
+          <div style="font-size:8px;color:var(--dim);letter-spacing:2px;">NEURAL COMMAND INTERFACE v10.0</div>
+        </div>
+        <div style="font-size:9px;color:var(--green);letter-spacing:2px;padding:3px 10px;border:1px solid rgba(0,255,136,0.3);border-radius:20px;">● ONLINE</div>
+      </div>
+      <div class="messages" id="messages">
+        <div class="msg">
+          <div class="msg-who jarvis">◈ JARVIS &nbsp;<span style="color:var(--dim);font-size:8px;">SYSTEM</span></div>
+          <div class="msg-body jarvis">Good day, Sir. All systems are fully operational. I am JARVIS — your personal AI assistant.<br><br>Type anything naturally, or use the quick tools on the left and right panels. How may I be of service?</div>
+        </div>
+        <div id="typingIndicator" style="display:none;" class="msg">
+          <div class="msg-who jarvis">◈ JARVIS</div>
+          <div class="typing-dots"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <div class="input-row">
+        <div class="inp-prefix">›</div>
+        <input type="text" id="chatInput" placeholder="Command JARVIS or just chat naturally..." onkeydown="if(event.key==='Enter')sendChat()">
+        <button id="sendBtn" onclick="sendChat()">SEND</button>
+        <button id="clearBtn" onclick="clearChat()" title="Clear memory">✕</button>
+      </div>
+    </div>
+
+    <!-- YouTube -->
+    <div class="panel">
+      <div class="panel-title">◈ YouTube Search</div>
+      <div class="yt-input-row">
+        <input class="yt-input" type="text" id="ytInput" placeholder="Song or video name..." onkeydown="if(event.key==='Enter')searchYT()">
+        <button class="yt-btn" onclick="searchYT()">▶ SEARCH</button>
+      </div>
+      <div class="yt-results" id="ytResults"></div>
+    </div>
+
+    <!-- Weather -->
+    <div class="panel">
+      <div class="panel-title">◈ Weather Scanner</div>
+      <div class="weather-input-row">
+        <input class="w-input" type="text" id="weatherInput" placeholder="City name..." onkeydown="if(event.key==='Enter')getWeather()">
+        <button class="w-btn" onclick="getWeather()">SCAN</button>
+      </div>
+      <div id="weatherResult"></div>
+    </div>
+
+    <!-- Cricket -->
+    <div class="panel">
+      <div class="panel-title">◈ Live Cricket</div>
+      <div class="cricket-box" id="cricketBox">Click REFRESH to load live scores...</div>
+      <button class="accent-btn green cricket-btn" onclick="getCricket()">🏏 REFRESH SCORES</button>
+    </div>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-col">
+
+    <!-- Notes -->
+    <div class="panel">
+      <div class="panel-title">◈ Quick Notes</div>
+      <textarea class="note-input" id="noteInput" rows="3" placeholder="Type your note..."></textarea>
+      <button class="save-btn" onclick="saveNote()">◈ SAVE NOTE</button>
+      <div class="note-list" id="noteList">
+        <div style="font-size:10px;color:var(--dim);">Loading notes...</div>
+      </div>
+    </div>
+
+    <!-- Reminders -->
+    <div class="panel">
+      <div class="panel-title">◈ Reminders</div>
+      <div class="reminder-row">
+        <input class="r-input" type="text" id="reminderText" placeholder="Reminder text...">
+        <input class="r-mins" type="number" id="reminderMins" placeholder="min" min="1" value="30">
+        <button class="r-add-btn" onclick="addReminder()">+</button>
+      </div>
+      <div id="reminderList">
+        <div style="font-size:10px;color:var(--dim);">No reminders...</div>
+      </div>
+    </div>
+
+    <!-- AI Tools -->
+    <div class="panel">
+      <div class="panel-title">◈ AI Power Tools</div>
+      <button class="tool-btn" onclick="aiTool('brainstorm 8 creative business ideas')">💡 Brainstorm Ideas</button>
+      <button class="tool-btn" onclick="askAiTool('write')">✍️ Write Document</button>
+      <button class="tool-btn" onclick="askAiTool('explain')">🧠 Explain Topic</button>
+      <button class="tool-btn" onclick="askAiTool('translate')">🌐 Translate</button>
+      <button class="tool-btn" onclick="askAiTool('debate')">⚖️ Debate Topic</button>
+      <button class="tool-btn" onclick="askAiTool('summarize')">📋 Summarize Text</button>
+    </div>
+
+    <!-- Session info -->
+    <div class="panel">
+      <div class="panel-title">◈ Session Info</div>
+      <div class="stat-row"><span>MESSAGES</span><span class="stat-val" id="msgCount">0</span></div>
+      <div class="stat-row"><span>DATE</span><span class="stat-val" id="dateLabel" style="font-size:9px;">--</span></div>
+      <div class="stat-row" style="margin-top:8px;">
+        <span style="font-size:9px;color:var(--dim);">Type naturally in chat for any task. JARVIS understands everything.</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STATE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let sessionId = 'web_' + Date.now();
+let msgCount = 0;
+let sessionStart = Date.now();
+let currentMode = 'casual';
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CLOCK & STATUS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = now.toLocaleTimeString('en-US',{hour12:false});
+  document.getElementById('dateLabel').textContent = now.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
+  const mins = Math.floor((Date.now()-sessionStart)/60000);
+  document.getElementById('sessionStat').textContent = `${mins}m`;
+}
+setInterval(updateClock, 1000); updateClock();
+
+async function loadStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    document.getElementById('aiStat').textContent = d.ai || 'OFFLINE';
+    document.getElementById('aiLabel').textContent = d.ai || 'OFFLINE';
+    document.getElementById('taskStat').textContent = d.tasks;
+    document.getElementById('notesStat').textContent = d.notes;
+    document.getElementById('remStat').textContent = d.reminders;
+    document.getElementById('modeLabel').textContent = (d.mode||'casual').toUpperCase();
+    currentMode = d.mode || 'casual';
+    updateModeButtons();
+  } catch(e){}
+}
+setInterval(loadStatus, 8000); loadStatus();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// TOAST
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CHAT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function addMsg(who, text) {
+  const msgs = document.getElementById('messages');
+  const typing = document.getElementById('typingIndicator');
+  const now = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+  const div = document.createElement('div');
+  div.className = 'msg';
+  div.innerHTML = `<div class="msg-who ${who}">${who==='jarvis'?'◈ JARVIS':'▶ SIR'} <span style="color:var(--dim);font-size:8px;">${now}</span></div><div class="msg-body ${who}">${formatText(text)}</div>`;
+  msgs.insertBefore(div, typing);
+  msgs.scrollTop = msgs.scrollHeight;
+  msgCount++;
+  document.getElementById('msgCount').textContent = msgCount;
+  const pct = Math.min(msgCount*5, 100);
+  document.getElementById('contextBar').style.width = pct+'%';
+}
+
+function formatText(text) {
+  text = text.replace(/```[\s\S]*?```/g, m=>`<pre style="background:rgba(0,207,255,0.05);border:1px solid rgba(0,207,255,0.2);padding:10px;border-radius:3px;margin:6px 0;overflow-x:auto;font-size:11px;">${m.replace(/```\w*\n?/g,'').replace(/```/g,'')}</pre>`);
+  text = text.replace(/`([^`]+)`/g,'<code style="background:rgba(0,207,255,0.1);padding:1px 5px;border-radius:2px;color:var(--blue);">$1</code>');
+  text = text.replace(/\*\*([^*]+)\*\*/g,'<strong style="color:var(--gold);">$1</strong>');
+  text = text.replace(/\*([^*]+)\*/g,'<em>$1</em>');
+  text = text.replace(/\n/g,'<br>');
+  return text;
+}
+
+async function sendChat() {
+  const inp = document.getElementById('chatInput');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = '';
+  addMsg('user', text);
+  document.getElementById('typingIndicator').style.display = 'block';
+  document.getElementById('messages').scrollTop = 999999;
+  try {
+    const r = await fetch('/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({message: text, session_id: sessionId})
+    });
+    const d = await r.json();
+    document.getElementById('typingIndicator').style.display = 'none';
+    addMsg('jarvis', d.reply || '❌ No response');
+  } catch(e) {
+    document.getElementById('typingIndicator').style.display = 'none';
+    addMsg('jarvis', '❌ Connection error. Is the server running?');
+  }
+}
+
+async function quickChat(text) {
+  document.getElementById('chatInput').value = text;
+  await sendChat();
+}
+
+async function clearChat() {
+  await fetch('/api/clear', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({session_id: sessionId})});
+  const msgs = document.getElementById('messages');
+  const typing = document.getElementById('typingIndicator');
+  msgs.innerHTML = ''; msgs.appendChild(typing);
+  msgCount = 0;
+  document.getElementById('msgCount').textContent = '0';
+  document.getElementById('contextBar').style.width = '5%';
+  addMsg('jarvis','Memory cleared, Sir. Fresh session initialized.');
+  toast('🔄 Memory cleared');
+}
+
+function aiTool(prompt) {
+  document.getElementById('chatInput').value = prompt;
+  sendChat();
+}
+
+function askAiTool(type) {
+  const topics = {
+    'write':'write a blog about ',
+    'explain':'explain ',
+    'translate':'translate to Hindi: ',
+    'debate':'debate: ',
+    'summarize':'summarize: '
+  };
+  const topic = prompt(`${type.toUpperCase()} — Enter topic or text:`);
+  if (topic) {
+    document.getElementById('chatInput').value = (topics[type]||type+' ') + topic;
+    sendChat();
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MODE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function setMode(mode) {
+  try {
+    await fetch('/api/mode', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({mode})});
+    currentMode = mode;
+    updateModeButtons();
+    document.getElementById('modeLabel').textContent = mode.toUpperCase();
+    addMsg('jarvis', `🎭 ${mode.toUpperCase()} mode activated.`);
+    toast(`🎭 ${mode.toUpperCase()} mode`);
+  } catch(e) {}
+}
+
+function updateModeButtons() {
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.textContent.toLowerCase().includes(currentMode)) btn.classList.add('active');
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// YOUTUBE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function searchYT() {
+  const query = document.getElementById('ytInput').value.trim();
+  if (!query) return;
+  const results = document.getElementById('ytResults');
+  results.innerHTML = '<div style="font-size:10px;color:var(--dim);padding:6px;">🔍 Searching...</div>';
+  try {
+    const r = await fetch('/api/youtube', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({query})});
+    const d = await r.json();
+    if (d.results && d.results.length) {
+      results.innerHTML = d.results.map(v=>`
+        <a class="yt-card" href="${v.url}" target="_blank">
+          <span class="yt-play-icon">▶</span>
+          <div style="flex:1;">
+            <div class="yt-title">${v.title}</div>
+            <div class="yt-meta">${v.channel||''} ${v.duration?'· '+v.duration:''}</div>
+          </div>
+        </a>`).join('');
+    } else if (d.fallback) {
+      results.innerHTML = `<a class="yt-card" href="${d.fallback}" target="_blank"><span class="yt-play-icon">▶</span><div class="yt-title">Search results for: ${query}</div></a>`;
+    }
+  } catch(e) {
+    results.innerHTML = '<div style="color:var(--red);font-size:10px;">❌ Search failed</div>';
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// WEATHER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function getWeather() {
+  const city = document.getElementById('weatherInput').value.trim();
+  if (!city) return;
+  const box = document.getElementById('weatherResult');
+  box.innerHTML = '<div style="font-size:10px;color:var(--dim);padding:6px;">🌐 Scanning...</div>';
+  try {
+    const r = await fetch('/api/weather', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({city})});
+    const d = await r.json();
+    if (d.error) { box.innerHTML = `<div style="color:var(--red);font-size:10px;">❌ ${d.error}</div>`; return; }
+    if (d.url) { box.innerHTML = `<a href="${d.url}" target="_blank" style="color:var(--blue);font-size:10px;">🌤 View weather for ${city}</a>`; return; }
+    box.innerHTML = `
+      <div class="weather-card">
+        <div class="w-city">${d.city}, ${d.country}</div>
+        <div class="w-temp">${d.temp}°C</div>
+        <div style="font-size:10px;color:var(--dim);margin-bottom:6px;">${d.desc} · Feels ${d.feels}°C</div>
+        <div class="w-row">
+          <span>💧 <span class="w-val">${d.humidity}%</span></span>
+          <span>💨 <span class="w-val">${d.wind} m/s</span></span>
+        </div>
+      </div>`;
+  } catch(e) {
+    box.innerHTML = '<div style="color:var(--red);font-size:10px;">❌ Failed</div>';
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CRICKET
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function getCricket() {
+  const box = document.getElementById('cricketBox');
+  box.textContent = '🏏 Loading live scores...';
+  try {
+    const r = await fetch('/api/cricket');
+    const d = await r.json();
+    box.textContent = d.scores || 'No data';
+  } catch(e) {
+    box.textContent = '❌ Failed to load';
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// NOTES
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function saveNote() {
+  const text = document.getElementById('noteInput').value.trim();
+  if (!text) return;
+  await fetch('/api/notes', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text})});
+  document.getElementById('noteInput').value = '';
+  toast('📝 Note saved!');
+  loadNotes();
+}
+
+async function loadNotes() {
+  try {
+    const r = await fetch('/api/notes');
+    const d = await r.json();
+    const list = document.getElementById('noteList');
+    if (!d.notes || !d.notes.length) {
+      list.innerHTML = '<div style="font-size:10px;color:var(--dim);">No notes yet.</div>'; return;
+    }
+    list.innerHTML = d.notes.slice(0,8).map(n=>`
+      <div class="note-item">
+        <div>${n.text.slice(0,70)}${n.text.length>70?'...':''}</div>
+        <div class="note-time">${n.time||''}</div>
+      </div>`).join('');
+  } catch(e){}
+}
+setInterval(loadNotes, 15000); loadNotes();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// REMINDERS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function addReminder() {
+  const text = document.getElementById('reminderText').value.trim();
+  const mins = parseInt(document.getElementById('reminderMins').value) || 30;
+  if (!text) return;
+  const r = await fetch('/api/reminders', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text, minutes: mins})});
+  const d = await r.json();
+  if (d.ok) {
+    document.getElementById('reminderText').value = '';
+    toast(`⏰ Reminder at ${d.fire_at}`);
+    loadReminders();
+  }
+}
+
+async function loadReminders() {
+  try {
+    const r = await fetch('/api/reminders');
+    const d = await r.json();
+    const list = document.getElementById('reminderList');
+    if (!d.reminders || !d.reminders.length) {
+      list.innerHTML = '<div style="font-size:10px;color:var(--dim);">No active reminders.</div>'; return;
+    }
+    list.innerHTML = d.reminders.map(r=>`
+      <div class="reminder-item">
+        <span class="r-time">${r.time}</span>
+        <span style="font-size:10px;">${r.message.slice(0,50)}</span>
+      </div>`).join('');
+    document.getElementById('remStat').textContent = d.reminders.length;
+  } catch(e){}
+}
+setInterval(loadReminders, 20000); loadReminders();
+</script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+python-telegram-bot[job-queue]==20.7
+groq==0.4.2
+requests==2.31.0
+yt-dlp==2024.1.0
+flask==3.0.0
